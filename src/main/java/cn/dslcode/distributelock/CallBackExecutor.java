@@ -8,5 +8,5 @@ package cn.dslcode.distributelock;
 @FunctionalInterface
 public interface CallBackExecutor<R> {
 
-	R execute() throws Exception;
+	R execute() throws Throwable;
 }

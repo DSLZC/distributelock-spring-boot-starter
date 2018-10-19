@@ -1,5 +1,8 @@
 package cn.dslcode.distributelock;
 
+import cn.dslcode.distributelock.lock.DistributeLock;
+import cn.dslcode.distributelock.lock.RedisDistributeLock;
+import cn.dslcode.distributelock.lock.ZookeeperDistributeLock;
 import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.ZooKeeper;

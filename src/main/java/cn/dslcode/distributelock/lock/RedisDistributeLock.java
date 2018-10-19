@@ -1,5 +1,6 @@
-package cn.dslcode.distributelock;
+package cn.dslcode.distributelock.lock;
 
+import cn.dslcode.distributelock.CallBackExecutor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -58,13 +59,13 @@ public class RedisDistributeLock<R> implements DistributeLock<R> {
      * @throws Exception
      */
     @Override
-    public R tryLockAndCallBack(String lockKey, int waitTimeMs, int timeoutMs, CallBackExecutor<R> successExecutor, CallBackExecutor<R> failExecutor) throws Exception {
+    public R tryLockAndCallBack(String lockKey, int waitTimeMs, int timeoutMs, CallBackExecutor<R> successExecutor, CallBackExecutor<R> failExecutor) throws Throwable {
         String lockValue = UUID.randomUUID().toString();
         boolean getLock = false;
         try {
             if (getLock = tryLock(lockKey, lockValue, waitTimeMs, timeoutMs)) {
-                log.debug("ThreadName = {}, tryAddLock = {}", Thread.currentThread().getName(), "获取锁成功");
-                // 继续执行业务
+                if (log.isDebugEnabled()) log.debug("ThreadName = {}, tryLock = {}", Thread.currentThread().getName(), "获取锁成功");
+                // 获取锁成功，执行成功业务逻辑
                 return successExecutor.execute();
             }
         } finally {
@@ -72,9 +73,8 @@ public class RedisDistributeLock<R> implements DistributeLock<R> {
             if (getLock) {
                 releaseLock(lockKey, lockValue);
             }
-            log.debug("===========>DistributedRedisLockAspect  end ............");
         }
-        // 获取锁失败
+        // 获取锁失败，执行失败业务逻辑
         return failExecutor.execute();
     }
 
@@ -92,16 +92,21 @@ public class RedisDistributeLock<R> implements DistributeLock<R> {
     public boolean tryLock(String lockKey, String lockValue, int waitTimeMs, int timeoutMs) throws Exception {
         lockKey = lockPrefix + lockKey;
         boolean getLock;
+        // 尝试获取锁
         // 没有获得锁并且等待时间大于0，进入等待时间循环获取锁
-        if (!(getLock = redisAddLock(lockKey, lockValue, timeoutMs)) && waitTimeMs > 0) {
+        if (!(getLock = redisTryLock(lockKey, lockValue, timeoutMs)) && waitTimeMs > 0) {
             long startTime = System.currentTimeMillis();
+            int yieldTimes = 0;// 让出CPU次数
             do {
-                Thread.sleep(100);
+                if (log.isDebugEnabled()) log.debug("ThreadName = {}, tryLock = {}", Thread.currentThread().getName(), "等待获取.............");
                 Thread.yield();// 让出CPU
-                log.info("ThreadName = {}, tryAddLock = {}", Thread.currentThread().getName(), "等待获取.............");
-                // 如果获得锁，直接跳出循环
-                if (getLock = redisAddLock(lockKey, lockValue, timeoutMs)) {
+                // 如果抢到锁，直接跳出循环
+                if (getLock = redisTryLock(lockKey, lockValue, timeoutMs)) {
                     break;
+                }
+                // 还是抢不到，睡一会
+                if(yieldTimes++ >= 2 ) {
+                    Thread.sleep(20 + 10*yieldTimes);
                 }
             } while (System.currentTimeMillis() - startTime < waitTimeMs);
         }
@@ -115,6 +120,7 @@ public class RedisDistributeLock<R> implements DistributeLock<R> {
      */
     @Override
     public void releaseLock(String lockKey, String lockValue) {
+        // 直接删除锁
         redisDelLock(lockPrefix + lockKey, lockValue);
     }
 
@@ -123,13 +129,13 @@ public class RedisDistributeLock<R> implements DistributeLock<R> {
 
 
     /**
-     * 尝试添加分布式锁
+     * redis尝试添加分布式锁
      * @param lockKey
      * @param lockValue
      * @param timeoutMs 锁过期时间/毫秒
      * @return true：加锁成功 fasle：加锁失败
      */
-    private boolean redisAddLock(String lockKey, String lockValue, int timeoutMs) {
+    private boolean redisTryLock(String lockKey, String lockValue, int timeoutMs) {
         List<String> keys = new ArrayList<>(1);
         keys.add(lockKey);
         String tryLock = redisTemplate.execute(redisLockScript, keys, lockValue, String.valueOf(timeoutMs));
@@ -137,7 +143,7 @@ public class RedisDistributeLock<R> implements DistributeLock<R> {
     }
 
     /**
-     * 释放锁
+     * redis删除锁
      * @param lockKey
      * @param lockValue
      */

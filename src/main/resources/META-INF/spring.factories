@@ -1,1 +1,1 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=cn.dslcode.distributelock.DistributeLockAutoConfiguration
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=cn.dslcode.distributelock.DistributeLockAutoConfiguration,cn.dslcode.distributelock.aspect.DistributedLockAspect

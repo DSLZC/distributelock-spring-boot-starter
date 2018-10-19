@@ -1,4 +1,6 @@
-package cn.dslcode.distributelock;
+package cn.dslcode.distributelock.lock;
+
+import cn.dslcode.distributelock.CallBackExecutor;
 
 /**
  * @author dongsilin
@@ -17,7 +19,7 @@ public interface DistributeLock<R> {
      * @return R 回调业务逻辑泛型
      * @throws Exception
      */
-    R tryLockAndCallBack(String lockKey, int waitTimeMs, int timeoutMs, CallBackExecutor<R> successExecutor, CallBackExecutor<R> failExecutor) throws Exception;
+    R tryLockAndCallBack(String lockKey, int waitTimeMs, int timeoutMs, CallBackExecutor<R> successExecutor, CallBackExecutor<R> failExecutor) throws Throwable;
 
     /**
      * 尝试加锁

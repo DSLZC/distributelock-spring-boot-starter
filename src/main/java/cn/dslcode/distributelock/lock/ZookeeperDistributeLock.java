@@ -1,5 +1,6 @@
-package cn.dslcode.distributelock;
+package cn.dslcode.distributelock.lock;
 
+import cn.dslcode.distributelock.CallBackExecutor;
 import java.io.Closeable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.CreateMode;
@@ -24,7 +25,7 @@ public class ZookeeperDistributeLock<R> implements DistributeLock<R>, Closeable 
     private String ROOT_LOCK_ = "/locks/";
 
     /**
-     * 创建zookeeper 连接并初始化分布式锁根节点
+     * 创建zookeeper连接并初始化分布式锁根节点
      * @param connectString list of server address: ip:port, ip:port, ip:port
      */
     public ZookeeperDistributeLock(String connectString) {
@@ -51,13 +52,13 @@ public class ZookeeperDistributeLock<R> implements DistributeLock<R>, Closeable 
      * @throws Exception
      */
     @Override
-    public R tryLockAndCallBack(String lockKey, int waitTimeMs, int timeoutMs, CallBackExecutor<R> successExecutor, CallBackExecutor<R> failExecutor) throws Exception {
-        // 尝试获取锁
+    public R tryLockAndCallBack(String lockKey, int waitTimeMs, int timeoutMs, CallBackExecutor<R> successExecutor, CallBackExecutor<R> failExecutor) throws Throwable {
         boolean getLock = false;
         try {
+            // 尝试获取锁
             if (getLock = tryLock(lockKey, null, waitTimeMs, 0)) {
-                log.debug("ThreadName = {}, tryAddLock = {}", Thread.currentThread().getName(), "获取锁成功");
-                // 获取锁成功回调
+                if (log.isDebugEnabled()) log.debug("ThreadName = {}, tryLock = {}", Thread.currentThread().getName(), "获取锁成功");
+                // 获取锁成功，执行成功业务逻辑
                 return successExecutor.execute();
             }
         } finally {
@@ -66,8 +67,8 @@ public class ZookeeperDistributeLock<R> implements DistributeLock<R>, Closeable 
                 releaseLock(lockKey, null);
             }
         }
-        log.debug("ThreadName = {}, tryAddLock = {}", Thread.currentThread().getName(), "获取锁失败");
-        // 获取锁失败，执行失败回调
+        if (log.isDebugEnabled()) log.debug("ThreadName = {}, tryLock = {}", Thread.currentThread().getName(), "获取锁失败");
+        // 获取锁失败，执行失败业务逻辑
         return failExecutor.execute();
     }
 
@@ -81,17 +82,21 @@ public class ZookeeperDistributeLock<R> implements DistributeLock<R>, Closeable 
     @Override
     public boolean tryLock(String lockKey, String lockValue, int waitTimeMs, int timeoutMs) throws Exception {
         lockKey = ROOT_LOCK_ + lockKey;
-        // 尝试获取锁
         boolean getLock;
-        // 创建临时节点，添加锁，如果节点已经存在，会抛出 KeeperException.NodeExistsException
+        // 尝试获取锁
+        // 创建临时节点，如果节点已经存在，会抛出 KeeperException.NodeExistsException
         if (!(getLock = createTempNode(lockKey)) && waitTimeMs > 0) {
             long startTime = System.currentTimeMillis();
+            int yieldTimes = 0;// 让出CPU次数
             do {
-                Thread.sleep(100);
-                Thread.yield();
-                log.debug("ThreadName = {}, tryAddLock = {}", Thread.currentThread().getName(), "等待获取.............");
+                if (log.isDebugEnabled()) log.debug("ThreadName = {}, tryLock = {}", Thread.currentThread().getName(), "等待获取.............");
+                Thread.yield();// 让出CPU
                 if (getLock = createTempNode(lockKey)) {
                     break;
+                }
+                // 还是抢不到，睡一会
+                if(yieldTimes++ >= 2 ) {
+                    Thread.sleep(20 + 10*yieldTimes);
                 }
             } while (System.currentTimeMillis() - startTime < waitTimeMs);
         }
