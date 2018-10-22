@@ -30,7 +30,7 @@ public @interface Lockable {
 		 */
 		String[] fields() default {};
 
-		/** 获取锁失败提示消息 */
+		/** 获取锁失败提示消息，可将此消息抛出RuntimeException，然后用全局异常处理器处理 */
 		String failMsg() default "请勿重复提交|2101";
 
 }

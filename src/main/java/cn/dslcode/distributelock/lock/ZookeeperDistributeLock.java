@@ -43,7 +43,7 @@ public class ZookeeperDistributeLock<R> implements DistributeLock<R>, Closeable 
     }
 
     /**
-     * 尝试加锁并回调业务逻辑
+     * 尝试加锁并回调业务逻辑，自动释放锁
      * @param lockKey 锁key,每个业务一个key
      * @param waitTimeMs 等待时间/ms
      * @param successExecutor 获取锁成功回调业务逻辑

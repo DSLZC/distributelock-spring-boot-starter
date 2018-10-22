@@ -16,6 +16,7 @@ import org.springframework.core.annotation.Order;
 /**
  * @author dongsilin
  * @version 2018/10/19.
+ * 分布式锁aop
  */
 @Slf4j
 @Order(100)

@@ -4,7 +4,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 /**
- * 反射工具类.
+ * @author dongsilin
+ * @version 2018/10/19.
+ * 反射工具类
  */
 class ReflectionUtil {
 
