@@ -25,8 +25,8 @@ public @interface Lockable {
 		int timeoutMs() default 5000;
 
 		/**
-		 * 方法参数field名称，支持多级，如：方法参数名或方法参数名.对象名.对象名。
-		 * 利用反射取值，用于和key组合起来组成lock名称
+		 * 方法参数field名称，支持多级，如：方法参数名 或 方法参数名.对象名.对象名。
+		 * 利用反射取值，用于和key组合起来组成新的lockKey
 		 */
 		String[] fields() default {};
 

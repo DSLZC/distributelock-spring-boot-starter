@@ -12,14 +12,13 @@ spring boot 分布式锁starter，基于redis和zookeeper实现，接入使用�
 这里我们主要讨论两种方案：基于redis的分布式锁和基于zookeeper的分布式锁
 
 ##### 基于redis的分布式锁
-redis自身就提供了命令：SET key value NX PX expireTimeMs，专门用于分布式锁的场景，效率高且提供锁失效机制，
+redis自身就提供了命令：SET key value NX PX expireTimeMs，专门用于处理分布式锁的场景，效率高且提供锁失效机制，
 即使由于某种情况客户端没有发送解锁请求，也不会造成死锁。
 
-但是如果redis跑在集群的情况下，由于redsi集群之间采用异步的方式进行数据的同步，
-因此在并发量大的情况下有可能遇到数据同步不及时造成多个请求同时获取到锁，
-虽然业界有redlock算法以及redisson客户端实现能基本处理此类问题，但是其算法逻辑实现很复杂，
-并不能完美解决这个问题，更有甚者有分布式的专家Martin写了一篇文章[《How to do distributed locking》](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html),
-质疑 Redlock 的正确性。Martin最后对Redlock算法的形容是： neither fish nor fowl （非驴非马）。
+但是如果redis跑在集群的情况下，由于redis集群之间采用异步的方式进行数据同步，因此在并发量大的情况下有可能遇到数据同步不及时造成多个请求同时获取到锁，
+虽然业界有redlock算法以及redisson客户端实现能基本处理此类问题，也并不能完美解决这个问题，其算法逻辑实现还很复杂，
+更有甚者有分布式的专家Martin写了一篇文章[《How to do distributed locking》](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html),
+质疑redlock的正确性。Martin最后对redlock算法的形容是： neither fish nor fowl （非驴非马）。
 本人觉得这篇文章（[《基于Redis的分布式锁真的安全吗？》<http://www.sohu.com/a/128396689_487514>]）就redis集群分布式锁的安全问题就讲得非常好。
 
 结论：
@@ -40,12 +39,12 @@ Curator对zkclient做了进一步的封装，让人使用zookeeper更加方便�
 Curator实现zookeeper分布式锁的基本原理如下：
 * 在zookeeper指定节点（${serviceLockName}）下创建临时顺序节点node_n
 * 获取${serviceLockName}下所有子节点children
-* 对子节点按节点自增序号从小到大排序
-* 判断本节点是不是第一个子节点，若是，则获取锁；若不是，则监听比该节点小的那个节点的删除事件
+* 对子节点按节点自增序号从小到大排序，判断本节点是不是第一个子节点
+* 若是，则获取锁；若不是，则监听比该节点小的那个节点的删除事件
 * 若监听事件生效，则回到第二步重新进行判断，直到获取到锁
 * 若超过等待时间，则获取锁失败
 
-就上面的Curator对分布式锁实现的算法还是挺复杂的，效率也不是太高，因为创建节点、获取所有子节点并排序等涉及到多个网络IO以及代码处理，所以效率上回打折扣，
+就上面的Curator对分布式锁实现的算法还是挺复杂的，效率也不是太高，因为创建节点、获取所有子节点并排序等操作涉及到多个网络IO以及代码逻辑处理，所以效率上会打折扣，
 还有释放锁的时候只会删除children节点，并不会删除${serviceLockName}节点，因此zookeeper server中有可能会出现大量的${serviceLockName}节点占用内存空间和Watcher。
 
 因此，本人觉得Curator有些过于复杂了，可以直接利用zookeeper的特性（一个节点下只能有一个唯一名称的节点，客户端创建一个临时节点，当此客户端与zookeeper server断开后，该临时节点会自动删除），
@@ -59,7 +58,7 @@ Curator实现zookeeper分布式锁的基本原理如下：
 
 ## 使用方法
 
-1. 分布式锁jar包引用
+1. 分布式锁starter jar包引用
 ```
 <dependency>
    <groupId>cn.dslcode</groupId>
@@ -68,7 +67,7 @@ Curator实现zookeeper分布式锁的基本原理如下：
 </dependency>
 ```
 
-2. spring-data-redis或zookeeperjar包引用
+2. spring-data-redis或zookeeper的jar包引用，使用redis的话需要依赖RedisTemplate
 ```
 <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -97,10 +96,11 @@ Curator实现zookeeper分布式锁的基本原理如下：
 3. 配置参数
 ```
 # 分布式锁方式：redis或zookeeper
+#distributelock.type=redis
 distributelock.type=zookeeper
 # 使用redis分布式锁，配置redis连接
-spring.redis.host=127.0.0.1
-spring.redis.port=6379
+# spring.redis.host=127.0.0.1
+# spring.redis.port=6379
 # 使用zookeeper分布式锁，配置zookeeper连接
 distributelock.zookeeper.connect-string=127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
 ```
@@ -119,8 +119,8 @@ public @interface Lockable {
     int timeoutMs() default 5000;
 
     /**
-     * 方法参数field名称，支持多级，如：方法参数名或方法参数名.对象名.对象名。
-     * 利用反射取值，用于和key组合起来组成lock名称
+     * 方法参数field名称，支持多级，如：方法参数名 或 方法参数名.对象名.对象名。
+     * 利用反射取值，用于和key组合起来组成新的lockKey
      */
     String[] fields() default {};
 
