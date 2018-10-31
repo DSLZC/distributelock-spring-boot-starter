@@ -1,4 +1,10 @@
 # distributelock-spring-boot-starter
+![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)
+![jdk    ](https://img.shields.io/badge/Jdk-1.8+-blue.svg)
+![springboot](https://img.shields.io/badge/springboot-green.svg)
+![redis](https://img.shields.io/badge/redis-a41f16.svg)
+![zookeeper](https://img.shields.io/badge/zookeeper-6a9653.svg)
+
 spring boot 分布式锁starter，基于redis和zookeeper实现，接入使用可任选其一
 > 如有建议或意见欢迎提issues
 
@@ -130,8 +136,8 @@ public @interface Lockable {
 }
 ```
 
-## 使用实例
-
+## 使用示例
+ 
  1. 使用注解的方式，starter已配置AOP自动拦截带有该注解的方法
  ```
  @PostMapping("createOrder")
