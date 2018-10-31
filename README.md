@@ -25,7 +25,7 @@ redis自身就提供了命令：SET key value NX PX expireTimeMs，专门用于�
 虽然业界有redlock算法以及redisson客户端实现能基本处理此类问题，也并不能完美解决这个问题，其算法逻辑实现还很复杂，
 更有甚者有分布式的专家Martin写了一篇文章[《How to do distributed locking》](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html),
 质疑redlock的正确性。Martin最后对redlock算法的形容是： neither fish nor fowl （非驴非马）。
-本人觉得这篇文章（[《基于Redis的分布式锁真的安全吗？》<http://www.sohu.com/a/128396689_487514>]）就redis集群分布式锁的安全问题就讲得非常好。
+本人觉得这篇文章（[《基于Redis的分布式锁真的安全吗？》](http://www.sohu.com/a/128396689_487514)），就redis集群分布式锁的安全问题就讲得非常好。
 
 结论：
 * 优点：性能好
